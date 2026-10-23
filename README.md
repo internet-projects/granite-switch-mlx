@@ -77,7 +77,7 @@ python scripts/ref_compare.py                        # vs IBM's own Hugging Face
 | Logits vs IBM's Hugging Face implementation (fp32, random small model; prefill, chunked prefill + decode, cache trimming, two adapter transitions) | maximum relative error 4e-7, identical routing, identical greedy output |
 | Decision example from IBM's model card (IBM: A 0.982 / B 0.0035 / C 0.014) | bf16 0.977 / 0.005 / 0.018 · 8-bit 0.979 / 0.005 / 0.016 · 4-bit 0.979 / 0.007 / 0.014 |
 | Guardian, harmful vs benign prompt | P(yes) 1.00 / 0.00 in every build, with the `{"score": "yes"}` JSON reply |
-| Same decision as bf16 on 1,071 real claim-check decisions (prompts of about 1,200 tokens, 3 options) | 8-bit 1,061 (99.1%, mean KL 0.0015) · 4-bit 999 (93.3%, mean KL 0.045) |
+| Same decision as bf16 on 1,071 real decisions (prompts of about 1,200 tokens, 3 options) | 8-bit 1,061 (99.1%, mean KL 0.0015) · 4-bit 999 (93.3%, mean KL 0.045) |
 
 Recommended build: 8-bit, which stays very close to bf16 at about half the size. The 4-bit build is the choice when memory is tight.
 
