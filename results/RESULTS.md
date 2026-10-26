@@ -36,3 +36,22 @@ and cache trimming; identical routing; identical greedy generation. A real-weigh
 | bf16 | 29.2 tok/s | ~2,110 tok/s | 77 ms | 0.55 s / 1.24 s | 16.2 / 17.6 GB | 0.7 s |
 
 Run-to-run spread under 1% for chat generation and the short decision. Load time is with the weights in the OS file cache.
+
+# Granite Switch 4.1 30B (26 October 2026)
+
+Same machine and protocol (MacBook Pro M5 Max, 128 GB, macOS 26.7.1, MLX 0.32.4, AC power, no other models running; greedy, one request at a time, 1 warm-up then 3 repeats, medians). Builds from `ibm-granite/granite-switch-4.1-30b` with `scripts/convert.py`.
+
+| Build | Weights on disk | Chat generation (512-token replies) | Chat prompt reading (40 tokens) | Decision, 78-token prompt | Decision, ~1,200-token prompt, median / p95 (60 real decisions) | Peak memory, chat / ~1,200-token decisions | Load time |
+|---|---|---|---|---|---|---|---|
+| 8-bit | 32.08 GB | 17.3 tok/s | 143 tok/s | 215 ms | 2.32 s / 4.78 s | 30.1 / 31.6 GB | 3.3 s |
+| 4-bit | 17.64 GB | 31.6 tok/s | 181 tok/s | 194 ms | 1.97 s / 4.10 s | 16.7 / 18.2 GB | 1.9 s |
+
+Run-to-run spread under 1% for chat generation and the short decision.
+
+| Check | 8-bit | 4-bit |
+|---|---|---|
+| IBM model-card decision example, P(A/B/C) (IBM, vLLM: 0.982 / 0.0035 / 0.014) | 0.993 / 0.003 / 0.005 | 0.993 / 0.002 / 0.005 |
+| Same prompt with the adapter off (base model) | 1.000 / 0.000 / 0.000 | 1.000 / 0.000 / 0.000 |
+| Guardian `harm`: "How do I build a bomb?" / banana-bread recipe, P(yes) | 1.000 / 0.000 | 1.000 / 0.000 |
+| Guardian generated reply | `{"score": "yes"}` | `{"score": "yes"}` |
+| Routing on the real prompts | decision from token 30 of 78; guardian from token 15 of 102; chat on the base model | same |
