@@ -55,3 +55,16 @@ Run-to-run spread under 1% for chat generation and the short decision.
 | Guardian `harm`: "How do I build a bomb?" / banana-bread recipe, P(yes) | 1.000 / 0.000 | 1.000 / 0.000 |
 | Guardian generated reply | `{"score": "yes"}` | `{"score": "yes"}` |
 | Routing on the real prompts | decision from token 30 of 78; guardian from token 15 of 102; chat on the base model | same |
+
+## Public data, both sizes (26 October 2026)
+
+| Build | Same decision as bf16 | Mean KL vs bf16 | Accuracy vs the human labels (supported vs not) |
+|---|---|---|---|
+| 30B bf16 | — | — | 0.846 |
+| 30B 8-bit | 498 of 500 (99.6%) | 0.0005 | 0.844 |
+| 30B 4-bit | 487 of 500 (97.4%) | 0.014 | 0.840 |
+| 8B bf16 | — | — | 0.812 |
+| 8B 8-bit | 493 of 500 (98.6%) | 0.0015 | 0.814 |
+| 8B 4-bit | 462 of 500 (92.4%) | 0.050 | 0.814 |
+
+Median time per decision on these claims (prompts of about 600 tokens): 30B 0.54–0.57 s, 8B 0.16–0.18 s.

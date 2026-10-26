@@ -4,6 +4,8 @@ Run IBM's Granite Switch 4.1 [8B](https://huggingface.co/ibm-granite/granite-swi
 
 Granite Switch is one model with three behaviours, chosen per request: plain Granite 4.1 chat, a `decision` adapter that returns a calibrated probability for each labelled option, and a `guardian-core` safety judge. Both adapters are activated LoRAs (aLoRA) embedded in the checkpoint: everything before the adapter's control token runs on the frozen base model, so a conversation prefix is computed once and serves chat, decisions and guardian checks alike. This package adds the `granite_switch` architecture to MLX-LM (`granite_switch_mlx/model.py`) with small `chat`, `decide` and `guard` helpers. First released 23 October 2026; the 30B builds were added on 26 October 2026.
 
+Write-up: [Granite Switch 4.1 on Apple Silicon: chat, decisions and a safety judge from one model](https://netprojects.com/insights/granite-switch-4-1-on-apple-silicon-mlx) (NetProjects Insights).
+
 Published by [NetProjects](https://netprojects.com) (Internet Projects Ltd). Not affiliated with IBM.
 
 ## Install and run
@@ -89,7 +91,18 @@ python scripts/ref_compare.py                        # vs IBM's own Hugging Face
 | 30B: decision example from IBM's model card | 8-bit 0.993 / 0.003 / 0.005 · 4-bit 0.993 / 0.002 / 0.005 |
 | 30B: guardian, harmful vs benign prompt | P(yes) 1.00 / 0.00 in both builds, with the `{"score": "yes"}` JSON reply |
 
-The rows that compare with bf16 are for the 8B builds. Recommended 8B build: 8-bit, which stays very close to bf16 at about half the size. The 4-bit build is the choice when memory is tight.
+On public data: 500 human-labelled claims (300 from the [LLM-AggreFact](https://huggingface.co/datasets/lytang/LLM-AggreFact) test split, 27–28 from each of its 11 sources; 200 from the [VitaminC](https://huggingface.co/datasets/tals/vitaminc) test split), one decision question per claim (supported / unsupported / contradicted):
+
+| Build | Same decision as bf16 | Mean KL vs bf16 | Accuracy vs the human labels (supported vs not) |
+|---|---|---|---|
+| 30B bf16 | — | — | 0.846 |
+| 30B 8-bit | 498 of 500 (99.6%) | 0.0005 | 0.844 |
+| 30B 4-bit | 487 of 500 (97.4%) | 0.014 | 0.840 |
+| 8B bf16 | — | — | 0.812 |
+| 8B 8-bit | 493 of 500 (98.6%) | 0.0015 | 0.814 |
+| 8B 4-bit | 462 of 500 (92.4%) | 0.050 | 0.814 |
+
+The 1,071-decision rows are for the 8B builds. Recommended 8B build: 8-bit, which stays very close to bf16 at about half the size. The 4-bit build is the choice when memory is tight.
 
 ## Speed and memory
 
@@ -120,7 +133,7 @@ From IBM's [granite-switch](https://github.com/generative-computing/granite-swit
 
 ## More from NetProjects
 
-[netprojects.com](https://netprojects.com) · [Insights](https://netprojects.com/insights) · [H2O-Lightning-4B on MLX](https://github.com/internet-projects/h2o-lightning-mlx) · [Dory 1.0 4B on MLX](https://github.com/internet-projects/dory-mlx) · [Hugging Face](https://huggingface.co/netprojects) · [How we use AI](https://netprojects.com/standards/ai)
+[netprojects.com](https://netprojects.com) · [Insights](https://netprojects.com/insights) · [Granite Switch on Apple Silicon (article)](https://netprojects.com/insights/granite-switch-4-1-on-apple-silicon-mlx) · [H2O-Lightning-4B on MLX](https://github.com/internet-projects/h2o-lightning-mlx) · [Dory 1.0 4B on MLX](https://github.com/internet-projects/dory-mlx) · [Hugging Face](https://huggingface.co/netprojects) · [How we use AI](https://netprojects.com/standards/ai)
 
 ## License
 
