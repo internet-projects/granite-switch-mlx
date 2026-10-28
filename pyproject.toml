@@ -4,8 +4,8 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "granite-switch-mlx"
-version = "0.1.0"
-description = "IBM Granite Switch 4.1 (chat + decision + guardian adapters) on Apple Silicon (MLX)"
+version = "0.2.0"
+description = "IBM Granite Switch 4.1 / 4.1.1 (chat + decision + guardian adapters) on Apple Silicon (MLX)"
 readme = "README.md"
 license = { text = "Apache-2.0" }
 requires-python = ">=3.10"

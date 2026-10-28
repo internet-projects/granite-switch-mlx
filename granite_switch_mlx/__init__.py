@@ -1,9 +1,9 @@
-"""granite-switch-mlx: run IBM Granite Switch 4.1 (chat + decision + guardian adapters) on Apple Silicon with MLX."""
+"""granite-switch-mlx: run IBM Granite Switch 4.1 / 4.1.1 (chat + decision + guardian adapters) on Apple Silicon with MLX."""
 import math
 import sys
 from pathlib import Path
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 DEFAULT_MODEL = "netprojects/granite-switch-4.1-8b-mlx-8bit"
 LABELS = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -29,6 +29,27 @@ def register():
     return _model
 
 
+def build_info(path_or_repo=DEFAULT_MODEL):
+    """The adapters a build carries, from IBM's BUILD.md: {"release": "4.1.1" | "4.1", "adapters": {name: {...}}}.
+
+    Granite Switch 4.1.1 (IBM, 27 October 2026) ships new decision weights (source `decision-4.1.1`); the
+    architecture, control tokens, prompt recipe and guardian-core adapter are those of 4.1, so both load the same way.
+    """
+    p = Path(str(path_or_repo))
+    if not p.exists():
+        from huggingface_hub import hf_hub_download
+
+        p = Path(hf_hub_download(str(path_or_repo), "BUILD.md")).parent
+    adapters = {}
+    for line in (p / "BUILD.md").read_text().splitlines():
+        cells = [c.strip() for c in line.replace("\\|", "/").strip().strip("|").split("|")]
+        if len(cells) >= 9 and cells[0].isdigit():
+            adapters[cells[1]] = {"technology": cells[2], "token_id": int(cells[4]), "rank": int(cells[5]),
+                                  "alpha": int(cells[6]), "source": cells[8]}
+    src = adapters.get("decision", {}).get("source", "")
+    return {"release": "4.1.1" if "4.1.1" in src else "4.1", "adapters": adapters}
+
+
 def load(path_or_repo=DEFAULT_MODEL):
     """Load a Granite Switch MLX build (local folder or Hugging Face repo id). Returns (model, tokenizer)."""
     register()
@@ -44,7 +65,7 @@ def _prompt(tokenizer, messages, adapter=None):
 
 
 def chat(model, tokenizer, messages, max_tokens=512, temp=0.0):
-    """Plain Granite 4.1 chat (no adapter). Yields text pieces."""
+    """Plain Granite 4.1 chat (no adapter; the base model is the same in 4.1 and 4.1.1). Yields text pieces."""
     from mlx_lm.generate import stream_generate
     from mlx_lm.sample_utils import make_sampler
 

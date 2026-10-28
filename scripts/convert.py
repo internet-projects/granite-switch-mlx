@@ -1,6 +1,7 @@
 """Convert IBM's checkpoint to an MLX build.
 
-    python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-8bit --bits 8
+    python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-8bit --bits 8      # 4.1.1 (IBM's main since 27 Oct 2026)
+    python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-8bit-41 --bits 8 --revision granite-switch-4.1-8b   # 4.1
     python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-4bit --bits 4
     python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-bf16 --bits 16
 
@@ -23,8 +24,9 @@ ap.add_argument("src")
 ap.add_argument("out")
 ap.add_argument("--bits", type=int, choices=[4, 8, 16], default=8)
 ap.add_argument("--group-size", type=int, default=64)
+ap.add_argument("--revision", default=None, help="IBM repo revision (default: main = Granite Switch 4.1.1)")
 a = ap.parse_args()
-src = Path(a.src) if Path(a.src).exists() else Path(snapshot_download(a.src))
+src = Path(a.src) if Path(a.src).exists() else Path(snapshot_download(a.src, revision=a.revision))
 if a.bits == 16:
     convert(str(src), mlx_path=a.out, dtype="bfloat16")
 else:

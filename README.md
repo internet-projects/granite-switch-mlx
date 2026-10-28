@@ -1,8 +1,10 @@
 # granite-switch-mlx
 
-Run IBM's Granite Switch 4.1 [8B](https://huggingface.co/ibm-granite/granite-switch-4.1-8b) and [30B](https://huggingface.co/ibm-granite/granite-switch-4.1-30b) (released 14 October 2026) on Apple Silicon with [MLX](https://github.com/ml-explore/mlx).
+Run IBM's Granite Switch 4.1 [8B](https://huggingface.co/ibm-granite/granite-switch-4.1-8b) and [30B](https://huggingface.co/ibm-granite/granite-switch-4.1-30b) (released 14 October 2026; IBM's update **4.1.1** on 27 October 2026) on Apple Silicon with [MLX](https://github.com/ml-explore/mlx).
 
 Granite Switch is one model with three behaviours, chosen per request: plain Granite 4.1 chat, a `decision` adapter that returns a calibrated probability for each labelled option, and a `guardian-core` safety judge. Both adapters are activated LoRAs (aLoRA) embedded in the checkpoint: everything before the adapter's control token runs on the frozen base model, so a conversation prefix is computed once and serves chat, decisions and guardian checks alike. This package adds the `granite_switch` architecture to MLX-LM (`granite_switch_mlx/model.py`) with small `chat`, `decide` and `guard` helpers. First released 23 October 2026; the 30B builds were added on 26 October 2026.
+
+**Update, 28 October 2026:** all four builds are rebuilt from **Granite Switch 4.1.1**. IBM's 4.1.1 retrains the `decision` adapter; the base model and the `guardian-core` adapter are byte-identical to 4.1 (we checked every tensor), and the prompt recipe, control tokens and this package's loading code are unchanged. On 500 human-labelled public claims, accuracy rises from 0.846 to **0.858** (30B) and from 0.812 to **0.830** (8B), and the 8-bit builds give the same decision as bf16 on 499 and 495 of 500. Speed and memory are unchanged. The 4.1 builds stay available: `--revision granite-switch-4.1` on Hugging Face, and `git checkout granite-switch-4.1` here. `python -m granite_switch_mlx --model <build> info` shows which release a build carries.
 
 Write-up: [Granite Switch 4.1 on Apple Silicon: chat, decisions and a safety judge from one model](https://netprojects.com/insights/granite-switch-4-1-on-apple-silicon-mlx) (NetProjects Insights).
 
@@ -68,6 +70,7 @@ python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-8bit --bits 8
 python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-4bit --bits 4
 python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-bf16 --bits 16
 python scripts/convert.py ibm-granite/granite-switch-4.1-30b out-30b-8bit --bits 8   # the 30B the same way
+python scripts/convert.py ibm-granite/granite-switch-4.1-8b out-8bit-41 --bits 8 --revision granite-switch-4.1-8b   # the earlier 4.1
 ```
 
 Base weights are quantized (affine, group size 64). The adapters stay in bf16 and are stored at their own ranks (guardian-core 16, decision 64) instead of IBM's zero-padded rank-64 layout, which saves about 150 M parameters on the 8B with identical output.
@@ -76,7 +79,8 @@ Base weights are quantized (affine, group size 64). The adapters stay in bf16 an
 
 ```bash
 python scripts/check.py out-8bit --ref out-bf16     # chat, decision example, guardian, adapter off, vs reference
-python -m unittest discover -s tests                 # routing, chunked prefill, cache trimming (no download)
+python -m unittest discover -s tests                 # routing, chunked prefill, cache trimming, build info (no download)
+python -m granite_switch_mlx --model out-8bit info  # release (4.1 or 4.1.1) and adapters, from IBM's BUILD.md
 python scripts/ref_compare.py                        # vs IBM's own Hugging Face implementation (needs torch + granite-switch)
 ```
 
@@ -85,22 +89,24 @@ python scripts/ref_compare.py                        # vs IBM's own Hugging Face
 | Check | Result |
 |---|---|
 | Logits vs IBM's Hugging Face implementation (fp32, random small model; prefill, chunked prefill + decode, cache trimming, two adapter transitions) | maximum relative error 4e-7, identical routing, identical greedy output |
-| Decision example from IBM's model card (IBM: A 0.982 / B 0.0035 / C 0.014) | bf16 0.977 / 0.005 / 0.018 · 8-bit 0.979 / 0.005 / 0.016 · 4-bit 0.979 / 0.007 / 0.014 |
+| Decision example from IBM's model card (IBM: A 0.982 / B 0.0035 / C 0.014) | 4.1.1: bf16 0.995 / 0.0006 / 0.005 · 8-bit 0.995 / 0.0006 / 0.004 · 4-bit 0.996 / 0.0006 / 0.004 (4.1: 8-bit 0.979 / 0.005 / 0.016) |
 | Guardian, harmful vs benign prompt | P(yes) 1.00 / 0.00 in every build, with the `{"score": "yes"}` JSON reply |
-| Same decision as bf16 on 1,071 real decisions (prompts of about 1,200 tokens, 3 options) | 8-bit 1,061 (99.1%, mean KL 0.0015) · 4-bit 999 (93.3%, mean KL 0.045) |
-| 30B: decision example from IBM's model card | 8-bit 0.993 / 0.003 / 0.005 · 4-bit 0.993 / 0.002 / 0.005 |
+| Same decision as bf16 on 1,071 real decisions (prompts of about 1,200 tokens, 3 options; 4.1 builds) | 8-bit 1,061 (99.1%, mean KL 0.0015) · 4-bit 999 (93.3%, mean KL 0.045) |
+| 30B: decision example from IBM's model card | 4.1.1: 8-bit 0.999 / 0.0001 / 0.001 · 4-bit 0.999 / 0.0001 / 0.001 (4.1: 0.993 / 0.003 / 0.005) |
 | 30B: guardian, harmful vs benign prompt | P(yes) 1.00 / 0.00 in both builds, with the `{"score": "yes"}` JSON reply |
 
 On public data: 500 human-labelled claims (300 from the [LLM-AggreFact](https://huggingface.co/datasets/lytang/LLM-AggreFact) test split, 27–28 from each of its 11 sources; 200 from the [VitaminC](https://huggingface.co/datasets/tals/vitaminc) test split), one decision question per claim (supported / unsupported / contradicted):
 
-| Build | Same decision as bf16 | Mean KL vs bf16 | Accuracy vs the human labels (supported vs not) |
-|---|---|---|---|
-| 30B bf16 | — | — | 0.846 |
-| 30B 8-bit | 498 of 500 (99.6%) | 0.0005 | 0.844 |
-| 30B 4-bit | 487 of 500 (97.4%) | 0.014 | 0.840 |
-| 8B bf16 | — | — | 0.812 |
-| 8B 8-bit | 493 of 500 (98.6%) | 0.0015 | 0.814 |
-| 8B 4-bit | 462 of 500 (92.4%) | 0.050 | 0.814 |
+| Build | Same decision as bf16 | Mean KL vs bf16 | Accuracy vs the human labels (supported vs not) | 4.1 build (26 Oct) |
+|---|---|---|---|---|
+| 30B bf16 | — | — | 0.858 | 0.846 |
+| 30B 8-bit | 499 of 500 (99.8%) | 0.0006 | 0.858 | 0.844 |
+| 30B 4-bit | 485 of 500 (97.0%) | 0.011 | 0.854 | 0.840 |
+| 8B bf16 | — | — | 0.830 | 0.812 |
+| 8B 8-bit | 495 of 500 (99.0%) | 0.0008 | 0.830 | 0.814 |
+| 8B 4-bit | 464 of 500 (92.8%) | 0.037 | 0.826 | 0.814 |
+
+Granite Switch 4.1.1 builds (28 October 2026); the last column is the same build from 4.1. Agreement and KL are against the bf16 conversion of the same release.
 
 The 1,071-decision rows are for the 8B builds. Recommended 8B build: 8-bit, which stays very close to bf16 at about half the size. The 4-bit build is the choice when memory is tight.
 
@@ -121,7 +127,7 @@ Granite Switch 4.1 30B, measured the same way on 26 October 2026 (the ~1,200-tok
 | 8-bit | 32.1 GB | 17 tokens/s | 215 ms | 2.3 s / 4.8 s | 30.1 GB (31.6 GB at ~1,200 tokens) |
 | 4-bit | 17.6 GB | 32 tokens/s | 194 ms | 2.0 s / 4.1 s | 16.7 GB (18.2 GB at ~1,200 tokens) |
 
-A decision is a single forward pass, so its time is the time to read the prompt (about 1,900–2,100 tokens/s at 1,200 tokens on the 8B, about 530–620 tokens/s on the 30B). Chat generation was measured on 512-token replies.
+The 4.1.1 builds were measured again on 28 October 2026: chat generation, short-prompt decision time and peak memory are within 2% of the figures above (same size and architecture). A decision is a single forward pass, so its time is the time to read the prompt (about 1,900–2,100 tokens/s at 1,200 tokens on the 8B, about 530–620 tokens/s on the 30B). Chat generation was measured on 512-token replies.
 
 ## Notes
 

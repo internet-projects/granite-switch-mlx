@@ -55,5 +55,22 @@ class TestGraniteSwitch(unittest.TestCase):
         self.assertTrue(mx.allclose(out, ref, atol=1e-4))
 
 
+class TestBuildInfo(unittest.TestCase):
+    def test_release_from_build_md(self):
+        import tempfile
+        from pathlib import Path
+        row = "| 2 | decision | alora | `<\\|decision\\|>` | 100353 | 64 | {a} | down_proj, q_proj | {src} |"
+        for src, a, rel in (("decision-4.1.1", 64, "4.1.1"), ("alora", 128, "4.1")):
+            with tempfile.TemporaryDirectory() as d:
+                Path(d, "BUILD.md").write_text("| # | Name | Technology | Control Token | Token ID | Rank | Alpha | Target Modules | Source |\n"
+                                               "|---|---|---|---|---|---|---|---|---|\n"
+                                               "| 1 | guardian-core | alora | `<\\|guardian-core\\|>` | 100352 | 16 | 64 | q_proj | ibm-granite/granitelib-guardian-r1.0 |\n"
+                                               + row.format(a=a, src=src) + "\n")
+                info = granite_switch_mlx.build_info(d)
+                self.assertEqual(info["release"], rel)
+                self.assertEqual((info["adapters"]["decision"]["rank"], info["adapters"]["decision"]["alpha"]), (64, a))
+                self.assertEqual(info["adapters"]["guardian-core"]["rank"], 16)
+
+
 if __name__ == "__main__":
     unittest.main()
